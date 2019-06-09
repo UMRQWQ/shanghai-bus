@@ -2,7 +2,7 @@
 
 import json
 
-import redis
+#import redis
 import base64
 
 import requests
@@ -11,19 +11,6 @@ from bs4 import BeautifulSoup
 from settings import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, SID_TTL, STATIONS_TTL, STOPS_TTL
 
 headers = {'User-Agent': 'MicroMessenger/7.0.1380(0x27000034) Process/tools NetType/WIFI Language/zh_CN'}
-
-
-class RedisClient(object):
-    def __init__(self):
-        if not REDIS_PASSWORD:
-            self.pool = redis.ConnectionPool(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-        else:
-            self.pool = redis.ConnectionPool(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD,
-                                             decode_responses=True)
-        self.client = redis.Redis(connection_pool=self.pool)
-
-
-client = RedisClient().client
 
 
 class StopType(object):
@@ -68,13 +55,13 @@ class Bus(object):
 
     def get_sid(self):
         # 获取sid信息
-        sid = client.get(name=self.number_key)
+        #sid = client.get(name=self.number_key)
         if sid:
             return sid
         else:
             res = self.session.post(url=self.sid_url, headers=headers, data={'idnum': self.number}).json()
             sid = res['sid']
-            client.set(name=self.number_key, value=sid, ex=SID_TTL)
+            #client.set(name=self.number_key, value=sid, ex=SID_TTL)
             return sid
 
     def get_stations(self):
@@ -88,14 +75,14 @@ class Bus(object):
             for station in soup.find_all(attrs={'class': 'station'}):
                 num = station.find_all(attrs={'class': 'num'}, limit=1)[0].text.rstrip('.')
                 name = station.find_all(attrs={'class': 'name'}, limit=1)[0].text
-                client.hset(self.stations_key, num, name)
+                #client.hset(self.stations_key, num, name)
                 self.stations.update({num: name})
-            client.expire(self.stations_key, STATIONS_TTL)
+           # client.expire(self.stations_key, STATIONS_TTL)
         return self.stations
 
     def get_stops(self):
         # 获取停靠数据
-        stops = client.lrange(self.stops_key, 0, -1)
+       # stops = client.lrange(self.stops_key, 0, -1)
         if stops:
             self.stops = sorted([json.loads(x) for x in stops], key=lambda x: int(x['stop_id']))
         else:
@@ -104,8 +91,9 @@ class Bus(object):
                 res = self.session.post(self.stop_url, headers=headers, data=data).json()
                 res = res if isinstance(res, dict) else res[0]
                 info = StopInfo(stop_id=stop_id, station_name=station_name, **res)
-                client.lpush(self.stops_key, json.dumps(info.dumps()))
+                #client.lpush(self.stops_key, json.dumps(info.dumps()))
                 self.stops.append(info.dumps())
                 self.stops = sorted(self.stops, key=lambda x: int(x['stop_id']))
-                client.expire(self.stops_key, STOPS_TTL)
+                #client.expire(self.stops_key, STOPS_TTL)
         return self.stops
+
